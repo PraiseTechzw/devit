@@ -1,19 +1,30 @@
+/* eslint-disable  @typescript-eslint/no-unused-vars */
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
 
 export const dynamic = 'force-dynamic'; // Force dynamic behavior
 
-import { NextRequest } from "next/server";
+interface AuthResponse {
+  userId: string | null;
+}
 
-export async function GET(request: NextRequest) {
+interface StatsResponse {
+  totalMaterials: number;
+  dueThisWeek: number;
+  sharedWithMe: number;
+  recentActivity: number;
+}
+
+export async function GET(request: Request): Promise<NextResponse> {
   try {
-    const { userId } = await auth(); // Call auth() without arguments
+    const { userId }: AuthResponse = await auth(); // Call auth() without arguments
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 });
     }
 
-    const [totalMaterials, dueThisWeek, sharedWithMe, recentActivity] = await Promise.all([
+    const [totalMaterials, dueThisWeek, sharedWithMe, recentActivity]: [number, number, number, number] = await Promise.all([
       prisma.material.count({
         where: { userId },
       }),
@@ -37,12 +48,14 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
-    return NextResponse.json({
+    const response: StatsResponse = {
       totalMaterials,
       dueThisWeek,
       sharedWithMe,
       recentActivity,
-    });
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("[STATS_GET]", error);
     return new NextResponse("Internal Error", { status: 500 });
