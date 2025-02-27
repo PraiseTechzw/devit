@@ -1,21 +1,22 @@
-import { NextResponse } from "next/server"
-import { prisma } from "@/lib/db"
-import { auth } from "@clerk/nextjs/server"
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/db";
+import { auth } from "@clerk/nextjs/server";
 
-export async function GET() {
+export const dynamic = 'force-dynamic'; // Force dynamic behavior
+
+import { NextRequest } from "next/server";
+
+export async function GET(request: NextRequest) {
   try {
-    const { userId } = await auth()
+    const { userId } = await auth(); // Call auth() without arguments
     if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 })
+      return new NextResponse("Unauthorized", { status: 401 });
     }
 
     const [totalMaterials, dueThisWeek, sharedWithMe, recentActivity] = await Promise.all([
-      // Total materials count
       prisma.material.count({
         where: { userId },
       }),
-
-      // Due this week (materials with high priority created in last 7 days)
       prisma.material.count({
         where: {
           userId,
@@ -25,11 +26,7 @@ export async function GET() {
           },
         },
       }),
-
-      // Shared with me (placeholder - implement sharing feature later)
-      Promise.resolve(0),
-
-      // Recent activity (created in last 24 hours)
+      Promise.resolve(0), // Placeholder for sharedWithMe
       prisma.material.count({
         where: {
           userId,
@@ -38,17 +35,16 @@ export async function GET() {
           },
         },
       }),
-    ])
+    ]);
 
     return NextResponse.json({
       totalMaterials,
       dueThisWeek,
       sharedWithMe,
       recentActivity,
-    })
+    });
   } catch (error) {
-    console.error("[STATS_GET]", error)
-    return new NextResponse("Internal Error", { status: 500 })
+    console.error("[STATS_GET]", error);
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }
-
