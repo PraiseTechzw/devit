@@ -18,8 +18,15 @@ model User {
 
   // Relations
   materials     Material[]
-  studyGroups   StudyGroup[]
+  studyGroups   StudyGroup[]  @relation("OwnedGroups")
+  memberships   GroupMember[]
+  messages      GroupMessage[]
+  sentInvites   GroupInvite[] @relation("SentInvites")
+  receivedInvites GroupInvite[] @relation("ReceivedInvites")
+  notifications Notification[]
   tags          Tag[]
+  sharedFiles   SharedFile[]
+  reactions     MessageReaction[]
 
   // Preferences - stored as JSON (optional)
   preferences   Json?
@@ -31,7 +38,7 @@ model Material {
   type      String   // 'note' | 'pdf' | 'link'
   content   String?  @db.Text
   url       String?
-  fileId    String?
+  fileId    String?  // Appwrite file ID
   tags      String[]
   priority  String   // 'high' | 'medium' | 'low'
   createdAt DateTime @default(now())
@@ -41,63 +48,44 @@ model Material {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Optional study group relation
+  groupId   String?
+  group     StudyGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
   @@index([userId])
+  @@index([groupId])
 }
-
-model StudyGroup {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  createdAt   DateTime @default(now())
-
-  // Foreign key to User (owner)
-  ownerId     String
-  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-
-  // Array of user IDs (members)
-  members     String[]
-
-  @@index([ownerId])
-}
-
-model Tag {
-  id      String   @id @default(cuid())
-  name    String
-  count   Int      @default(0)
-
-  // Foreign key to User (owner of the tag)
-  userId  String
-  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, name])
-  @@index([userId])
-}
-
-// Existing models...
 
 model StudyGroup {
   id          String    @id @default(cuid())
   name        String
   description String?
+  avatar      String?   // Appwrite file ID for group avatar
+  isPrivate   Boolean   @default(false)
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
   // Foreign key to User (owner)
   ownerId     String
-  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  owner       User      @relation("OwnedGroups", fields: [ownerId], references: [id], onDelete: Cascade)
 
   // Relations
   members     GroupMember[]
   messages    GroupMessage[]
+  materials   Material[]
   invites     GroupInvite[]
+  sharedFiles SharedFile[]
+  events      GroupEvent[]
+  notifications Notification[]
 
   @@index([ownerId])
 }
 
 model GroupMember {
   id          String    @id @default(cuid())
-  role        String    @default("member") // "owner" | "member"
+  role        String    @default("member") // "owner" | "admin" | "member"
   joinedAt    DateTime  @default(now())
+  lastSeen    DateTime  @default(now())
   
   // Relations
   userId      String
@@ -112,18 +100,43 @@ model GroupMember {
 
 model GroupMessage {
   id          String    @id @default(cuid())
-  content     String
+  content     String    @db.Text
+  fileId      String?   // Appwrite file ID for attachments
+  fileName    String?   // Original file name if attached
+  fileType    String?   // MIME type if file attached
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
+  editedAt    DateTime?
+  isSystem    Boolean   @default(false)
 
   // Relations
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   groupId     String
   group       StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  reactions   MessageReaction[]
+  replyTo     String?   // ID of message being replied to
+  mentions    String[]  // Array of mentioned user IDs
 
   @@index([userId])
   @@index([groupId])
+  @@index([replyTo])
+}
+
+model MessageReaction {
+  id          String    @id @default(cuid())
+  emoji       String
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messageId   String
+  message     GroupMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId, emoji])
+  @@index([userId])
+  @@index([messageId])
 }
 
 model GroupInvite {
@@ -131,6 +144,7 @@ model GroupInvite {
   status      String    @default("pending") // "pending" | "accepted" | "rejected"
   createdAt   DateTime  @default(now())
   expiresAt   DateTime?
+  token       String    @unique // Unique invite token
 
   // Relations
   inviterId   String
@@ -144,15 +158,54 @@ model GroupInvite {
   @@index([inviterId])
   @@index([inviteeId])
   @@index([groupId])
+  @@index([token])
+}
+
+model SharedFile {
+  id          String    @id @default(cuid())
+  fileId      String    // Appwrite file ID
+  fileName    String
+  fileType    String
+  fileSize    Int
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([groupId])
+}
+
+model GroupEvent {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  location    String?
+  isOnline    Boolean   @default(false)
+  meetingUrl  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  groupId     String
+  group       StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([groupId])
 }
 
 model Notification {
   id          String    @id @default(cuid())
-  type        String    // "group_invite" | "group_message" | "group_join"
+  type        String    // "group_invite" | "group_message" | "group_join" | "event_reminder" | "mention"
   title       String
   content     String
   read        Boolean   @default(false)
   createdAt   DateTime  @default(now())
+  actionUrl   String?   // URL to navigate to when clicking the notification
 
   // Relations
   userId      String
@@ -166,14 +219,16 @@ model Notification {
   @@index([groupId])
 }
 
-// Update User model
-model User {
-  // Existing fields...
+model Tag {
+  id      String   @id @default(cuid())
+  name    String
+  color   String?  // Hex color code
+  count   Int      @default(0)
 
-  // Add relations
-  groupMemberships  GroupMember[]
-  groupMessages     GroupMessage[]
-  sentInvites       GroupInvite[]    @relation("SentInvites")
-  receivedInvites   GroupInvite[]    @relation("ReceivedInvites")
-  notifications     Notification[]
+  // Foreign key to User (owner of the tag)
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
 }
