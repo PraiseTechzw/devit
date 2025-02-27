@@ -1,13 +1,43 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { useUser } from "@clerk/nextjs"
 import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
+
+interface Stats {
+  totalMaterials: number
+  dueThisWeek: number
+  sharedWithMe: number
+  recentActivity: number
+}
 
 export function WelcomeBanner() {
   const { user } = useUser()
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [loading, setLoading] = useState(true)
   const notificationCount = 3 // This would come from your notifications system
+
+  useEffect(() => {
+    if (user) {
+      fetchStats()
+    }
+  }, [user])
+
+  async function fetchStats() {
+    try {
+      const response = await fetch("/api/stats")
+      if (!response.ok) throw new Error("Failed to fetch stats")
+      const data = await response.json()
+      setStats(data)
+    } catch (error) {
+      console.error("Error fetching stats:", error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const getTimeOfDay = () => {
     const hour = new Date().getHours()
@@ -39,25 +69,26 @@ export function WelcomeBanner() {
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 mt-4">
-          <div className="bg-white/10 rounded-lg p-4">
-            <p className="text-gray-200">Total Materials</p>
-            <p className="text-2xl font-bold text-white">24</p>
-          </div>
-          <div className="bg-white/10 rounded-lg p-4">
-            <p className="text-gray-200">Due This Week</p>
-            <p className="text-2xl font-bold text-white">5</p>
-          </div>
-          <div className="bg-white/10 rounded-lg p-4">
-            <p className="text-gray-200">Shared With You</p>
-            <p className="text-2xl font-bold text-white">3</p>
-          </div>
-          <div className="bg-white/10 rounded-lg p-4">
-            <p className="text-gray-200">Recent Activity</p>
-            <p className="text-2xl font-bold text-white">12</p>
-          </div>
+          <StatCard title="Total Materials" value={stats?.totalMaterials} loading={loading} />
+          <StatCard title="Due This Week" value={stats?.dueThisWeek} loading={loading} />
+          <StatCard title="Shared With You" value={stats?.sharedWithMe} loading={loading} />
+          <StatCard title="Recent Activity" value={stats?.recentActivity} loading={loading} />
         </div>
       </CardContent>
     </Card>
+  )
+}
+
+function StatCard({ title, value, loading }: { title: string; value?: number; loading: boolean }) {
+  return (
+    <div className="bg-white/10 rounded-lg p-4">
+      <p className="text-gray-200">{title}</p>
+      {loading ? (
+        <Skeleton className="h-8 w-16 bg-white/20" />
+      ) : (
+        <p className="text-2xl font-bold text-white">{value ?? 0}</p>
+      )}
+    </div>
   )
 }
 

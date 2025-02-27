@@ -1,10 +1,10 @@
-import { auth, currentUser } from "@clerk/nextjs"
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { auth, currentUser } from "@clerk/nextjs/server"
 
 export async function POST(request: Request) {
   try {
-    const { userId } = auth()
+    const { userId } = await auth()
     const user = await currentUser()
 
     if (!userId || !user) {

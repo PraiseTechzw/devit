@@ -72,3 +72,108 @@ model Tag {
   @@unique([userId, name])
   @@index([userId])
 }
+
+// Existing models...
+
+model StudyGroup {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Foreign key to User (owner)
+  ownerId     String
+  owner       User      @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Relations
+  members     GroupMember[]
+  messages    GroupMessage[]
+  invites     GroupInvite[]
+
+  @@index([ownerId])
+}
+
+model GroupMember {
+  id          String    @id @default(cuid())
+  role        String    @default("member") // "owner" | "member"
+  joinedAt    DateTime  @default(now())
+  
+  // Relations
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([userId])
+  @@index([groupId])
+}
+
+model GroupMessage {
+  id          String    @id @default(cuid())
+  content     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([groupId])
+}
+
+model GroupInvite {
+  id          String    @id @default(cuid())
+  status      String    @default("pending") // "pending" | "accepted" | "rejected"
+  createdAt   DateTime  @default(now())
+  expiresAt   DateTime?
+
+  // Relations
+  inviterId   String
+  inviter     User      @relation("SentInvites", fields: [inviterId], references: [id], onDelete: Cascade)
+  inviteeId   String
+  invitee     User      @relation("ReceivedInvites", fields: [inviteeId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       StudyGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([inviteeId, groupId])
+  @@index([inviterId])
+  @@index([inviteeId])
+  @@index([groupId])
+}
+
+model Notification {
+  id          String    @id @default(cuid())
+  type        String    // "group_invite" | "group_message" | "group_join"
+  title       String
+  content     String
+  read        Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Optional relations
+  groupId     String?
+  group       StudyGroup? @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([groupId])
+}
+
+// Update User model
+model User {
+  // Existing fields...
+
+  // Add relations
+  groupMemberships  GroupMember[]
+  groupMessages     GroupMessage[]
+  sentInvites       GroupInvite[]    @relation("SentInvites")
+  receivedInvites   GroupInvite[]    @relation("ReceivedInvites")
+  notifications     Notification[]
+}

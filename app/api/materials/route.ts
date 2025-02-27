@@ -1,41 +1,42 @@
-import { auth, getAuth } from "@clerk/nextjs/server"
-import { NextResponse, NextRequest } from "next/server"
+import { NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
+import { auth } from "@clerk/nextjs/server"
 
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
   try {
-    const { userId } = getAuth(request)
+    const { userId } = await auth()
     if (!userId) {
       return new NextResponse("Unauthorized", { status: 401 })
     }
 
-    // 🛠️ Check if the user exists in your database
-    let user = await prisma.user.findUnique({
-      where: { id: userId }
-    })
-
-    if (!user) {
-      // Optional: Auto-create the user if they don't exist
-      // This depends on your use case — you could also return 400 here instead
-      const clerkUser = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
-        headers: {
-          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`
-        }
-      }).then(res => res.json())
-
-      user = await prisma.user.create({
-        data: {
-          id: userId,
-          email: clerkUser.email_addresses[0].email_address,
-          name: `${clerkUser.first_name} ${clerkUser.last_name}`,
-          major: "", // You can fill this dynamically if needed
-          academicYear: ""
-        }
-      })
-    }
-
     const body = await request.json()
     const { title, type, content, url, fileId, tags, priority } = body
+
+    // Validate required fields
+    if (!title || !type || !priority) {
+      return new NextResponse("Missing required fields", { status: 400 })
+    }
+
+    // Validate type-specific fields
+    switch (type) {
+      case "note":
+        if (!content) {
+          return new NextResponse("Content is required for notes", { status: 400 })
+        }
+        break
+      case "pdf":
+        if (!fileId) {
+          return new NextResponse("File is required for PDF documents", { status: 400 })
+        }
+        break
+      case "link":
+        if (!url) {
+          return new NextResponse("URL is required for web links", { status: 400 })
+        }
+        break
+      default:
+        return new NextResponse("Invalid material type", { status: 400 })
+    }
 
     const material = await prisma.material.create({
       data: {
@@ -56,3 +57,31 @@ export async function POST(request: NextRequest) {
     return new NextResponse("Internal Error", { status: 500 })
   }
 }
+
+export async function GET(request: Request) {
+  try {
+    const { userId } = await auth()
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
+
+    const { searchParams } = new URL(request.url)
+    const type = searchParams.get("type")
+
+    const materials = await prisma.material.findMany({
+      where: {
+        userId,
+        ...(type ? { type } : {}),
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    })
+
+    return NextResponse.json(materials)
+  } catch (error) {
+    console.error("[MATERIALS_GET]", error)
+    return new NextResponse("Internal Error", { status: 500 })
+  }
+}
+
