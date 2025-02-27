@@ -28,8 +28,8 @@ export function SearchFilters() {
             <SelectItem value="low">Low</SelectItem>
           </SelectContent>
         </Select>
-        <Select defaultValue="newest" className="col-span-2 sm:col-span-1">
-          <SelectTrigger className="w-full sm:w-[180px]">
+        <Select defaultValue="newest">
+          <SelectTrigger className="w-full sm:w-[180px] col-span-2 sm:col-span-1">
             <SelectValue placeholder="Sort By" />
           </SelectTrigger>
           <SelectContent>
