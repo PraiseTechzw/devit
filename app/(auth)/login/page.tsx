@@ -10,25 +10,33 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/context/auth-context"
+import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const { signIn } = useAuth()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  })
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
-    setError("")
-
-    const formData = new FormData(event.currentTarget)
-    const email = formData.get("email") as string
-    const password = formData.get("password") as string
 
     try {
-      await signIn(email, password)
+      await signIn(formData.email, formData.password)
+      toast({
+        title: "Welcome back!",
+        description: "You have successfully signed in.",
+      })
     } catch (error) {
-      setError("Invalid email or password")
+      toast({
+        variant: "destructive",
+        title: "Error signing in",
+        description: "Invalid email or password. Please try again.",
+      })
     } finally {
       setLoading(false)
     }
@@ -44,7 +52,7 @@ export default function LoginPage() {
               alt="Login illustration"
               className="relative z-10 w-full"
               height="400"
-              src="/placeholder.svg"
+              src="/login.png"
               width="400"
             />
           </div>
@@ -71,10 +79,17 @@ export default function LoginPage() {
                 <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
               </div>
             </div>
-            <form onSubmit={handleSubmit}>
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" placeholder="m@example.com" required type="email" name="email" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
               </div>
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
@@ -83,22 +98,27 @@ export default function LoginPage() {
                     Forgot your password?
                   </Link>
                 </div>
-                <Input id="password" required type="password" name="password" />
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
               </div>
-              {error && <p className="text-red-500">{error}</p>}
-              <CardFooter className="flex flex-col gap-4">
-                <Button disabled={loading} className="w-full bg-[#319795] hover:bg-[#2C7A7B]" type="submit">
-                  {loading ? "Signing In..." : "Sign In"}
-                </Button>
-                <p className="text-sm text-center text-gray-500">
-                  Don't have an account?{" "}
-                  <Link className="text-[#319795] hover:underline" href="/signup">
-                    Sign up
-                  </Link>
-                </p>
-              </CardFooter>
+              <Button disabled={loading} className="w-full bg-[#319795] hover:bg-[#2C7A7B]" type="submit">
+                {loading ? "Signing In..." : "Sign In"}
+              </Button>
             </form>
           </CardContent>
+          <CardFooter>
+            <p className="text-sm text-center text-gray-500 w-full">
+              Don't have an account?{" "}
+              <Link className="text-[#319795] hover:underline" href="/signup">
+                Sign up
+              </Link>
+            </p>
+          </CardFooter>
         </Card>
       </div>
     </div>

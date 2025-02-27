@@ -11,26 +11,44 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/context/auth-context"
+import { useToast } from "@/hooks/use-toast"
 
 export default function SignupPage() {
   const { signUp } = useAuth()
+  const { toast } = useToast()
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState("")
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    password: "",
+    major: "",
+    academicYear: "",
+  })
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
     setLoading(true)
-    setError("")
-
-    const formData = new FormData(event.currentTarget)
-    const email = formData.get("email") as string
-    const password = formData.get("password") as string
-    const name = formData.get("name") as string
 
     try {
-      await signUp(email, password, name)
+      if (!formData.major || !formData.academicYear) {
+        throw new Error("Please select your major and academic year")
+      }
+
+      await signUp(formData.email, formData.password, formData.name, {
+        major: formData.major,
+        academicYear: formData.academicYear,
+      })
+
+      toast({
+        title: "Account created successfully",
+        description: "Welcome to StudPal! You can now start organizing your materials.",
+      })
     } catch (error) {
-      setError("Failed to create account")
+      toast({
+        variant: "destructive",
+        title: "Error creating account",
+        description: error instanceof Error ? error.message : "Please try again later",
+      })
     } finally {
       setLoading(false)
     }
@@ -46,7 +64,7 @@ export default function SignupPage() {
               alt="Signup illustration"
               className="relative z-10 w-full"
               height="400"
-              src="/placeholder.svg"
+              src="/auth.png"
               width="400"
             />
           </div>
@@ -76,19 +94,38 @@ export default function SignupPage() {
             <form onSubmit={handleSubmit} className="grid gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="name">Name</Label>
-                <Input id="name" placeholder="John Doe" required type="text" name="name" />
+                <Input
+                  id="name"
+                  placeholder="John Doe"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" placeholder="m@example.com" required type="email" name="email" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="m@example.com"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
-                <Input id="password" required type="password" name="password" />
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                />
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="major">Major</Label>
-                <Select>
+                <Select value={formData.major} onValueChange={(value) => setFormData({ ...formData, major: value })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Select your major" />
                   </SelectTrigger>
@@ -103,7 +140,10 @@ export default function SignupPage() {
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="year">Academic Year</Label>
-                <Select>
+                <Select
+                  value={formData.academicYear}
+                  onValueChange={(value) => setFormData({ ...formData, academicYear: value })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select your year" />
                   </SelectTrigger>
@@ -116,7 +156,6 @@ export default function SignupPage() {
                   </SelectContent>
                 </Select>
               </div>
-              {error && <p className="text-red-500 text-sm">{error}</p>}
               <Button disabled={loading} className="w-full bg-[#319795] hover:bg-[#2C7A7B]">
                 {loading ? "Creating Account..." : "Create Account"}
               </Button>

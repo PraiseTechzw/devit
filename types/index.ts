@@ -2,8 +2,12 @@ export interface User {
   $id: string
   name: string
   email: string
+  major?: string
+  academicYear?: string
+  createdAt?: string
   preferences?: {
-    theme?: "light" | "dark"
+    theme?: string
+    notifications?: boolean
   }
 }
 
