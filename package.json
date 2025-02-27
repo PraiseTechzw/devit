@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "npx prisma --version && prisma generate && next build",
+    "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint",
-    "postinstall": "prisma generate"
+    "lint": "next lint"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.12.1",
@@ -29,7 +28,8 @@
     "react-day-picker": "^8.10.1",
     "react-dom": "^18",
     "tailwind-merge": "^3.0.2",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "prisma": "^6.4.1"    
   },
   "devDependencies": {
     "@types/node": "^20",
@@ -38,7 +38,6 @@
     "eslint": "^8",
     "eslint-config-next": "14.2.16",
     "postcss": "^8",
-    "prisma": "^6.4.1",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
   }
