@@ -1,3 +1,6 @@
+/* eslint-disable react/no-unescaped-entities */
+/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link"
 import { ArrowRight, BookOpen, Brain, CheckCircle, Laptop } from "lucide-react"
 import { Button } from "@/components/ui/button"

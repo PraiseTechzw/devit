@@ -1,6 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+
 import type React from "react";
-import { Sidebar } from "@/components/sidebar";
-import { Header } from "@/components/header";
 
 export default function RootLayout({
   children,
