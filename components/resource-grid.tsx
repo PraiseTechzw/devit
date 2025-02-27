@@ -1,15 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { useUser } from "@clerk/nextjs"
 import { BookOpen, FileText, Globe, Grid2X2, List, MoreVertical } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { useAuth } from "@/context/auth-context"
 import type { Material } from "@/types"
 
 export function ResourceGrid() {
-  const { user } = useAuth()
+  const { user } = useUser()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [materials, setMaterials] = useState<Material[]>([])
   const [loading, setLoading] = useState(true)
@@ -22,10 +22,10 @@ export function ResourceGrid() {
 
   async function fetchMaterials() {
     try {
-      const response = await fetch(`/api/materials?userId=${user?.$id}`)
+      const response = await fetch("/api/materials")
       if (!response.ok) throw new Error("Failed to fetch materials")
       const data = await response.json()
-      setMaterials(data.documents)
+      setMaterials(data)
     } catch (error) {
       console.error("Error fetching materials:", error)
     } finally {
@@ -87,7 +87,7 @@ export function ResourceGrid() {
       <div className={viewMode === "grid" ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-4"}>
         {materials.map((resource) => (
           <Card
-            key={resource.$id}
+            key={resource.id}
             className={`group ${viewMode === "list" ? "flex flex-col sm:flex-row sm:items-center" : ""}`}
           >
             <CardHeader

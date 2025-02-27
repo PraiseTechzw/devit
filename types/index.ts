@@ -1,19 +1,5 @@
-export interface User {
-  $id: string
-  name: string
-  email: string
-  major?: string
-  academicYear?: string
-  createdAt?: string
-  preferences?: {
-    theme?: string
-    notifications?: boolean
-  }
-}
-
 export interface Material {
-  $id: string
-  userId: string
+  id: string
   title: string
   type: "note" | "pdf" | "link"
   content?: string
@@ -21,16 +7,26 @@ export interface Material {
   fileId?: string
   tags: string[]
   priority: "high" | "medium" | "low"
-  createdAt: string
-  updatedAt: string
+  createdAt: Date
+  updatedAt: Date
+  userId: string
+  date: string
 }
 
+
 export interface StudyGroup {
-  $id: string
+  id: string
   name: string
-  description: string
+  description?: string
   ownerId: string
   members: string[]
-  createdAt: string
+  createdAt: Date
+}
+
+export interface Tag {
+  id: string
+  name: string
+  count: number
+  userId: string
 }
 

@@ -17,14 +17,14 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
-import { useAuth } from "@/context/auth-context"
 import { storage } from "@/lib/appwrite"
 import { ID } from "appwrite"
 import type { Material } from "@/types"
 import { useRef } from "react"
+import { useUser } from "@clerk/nextjs"
 
 export function AddMaterial() {
-  const { user } = useAuth()
+  const { user } = useUser()
   const [step, setStep] = useState(1)
   const [materialType, setMaterialType] = useState<Material["type"]>()
   const [loading, setLoading] = useState(false)
@@ -54,7 +54,7 @@ export function AddMaterial() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: user.$id,
+          userId: user.id,
           title: formData.title,
           type: materialType,
           content: formData.content,

@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String       @id                    // This will match Clerk userId directly
+  email         String       @unique
+  name          String
+  major         String
+  academicYear  String
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  // Relations
+  materials     Material[]
+  studyGroups   StudyGroup[]
+  tags          Tag[]
+
+  // Preferences - stored as JSON (optional)
+  preferences   Json?
+}
+
+model Material {
+  id        String   @id @default(cuid())
+  title     String
+  type      String   // 'note' | 'pdf' | 'link'
+  content   String?  @db.Text
+  url       String?
+  fileId    String?
+  tags      String[]
+  priority  String   // 'high' | 'medium' | 'low'
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Foreign key to User (owner)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model StudyGroup {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Foreign key to User (owner)
+  ownerId     String
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Array of user IDs (members)
+  members     String[]
+
+  @@index([ownerId])
+}
+
+model Tag {
+  id      String   @id @default(cuid())
+  name    String
+  count   Int      @default(0)
+
+  // Foreign key to User (owner of the tag)
+  userId  String
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, name])
+  @@index([userId])
+}

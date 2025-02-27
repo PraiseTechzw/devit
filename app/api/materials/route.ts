@@ -1,18 +1,44 @@
-import { NextResponse } from "next/server"
-import { databases } from "@/lib/appwrite"
-import { ID } from "appwrite"
+import { auth, getAuth } from "@clerk/nextjs/server"
+import { NextResponse, NextRequest } from "next/server"
+import { prisma } from "@/lib/db"
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { userId, title, type, content, url, fileId, tags, priority } = body
+    const { userId } = getAuth(request)
+    if (!userId) {
+      return new NextResponse("Unauthorized", { status: 401 })
+    }
 
-    const material = await databases.createDocument(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_APPWRITE_MATERIALS_COLLECTION_ID!,
-      ID.unique(),
-      {
-        userId,
+    // 🛠️ Check if the user exists in your database
+    let user = await prisma.user.findUnique({
+      where: { id: userId }
+    })
+
+    if (!user) {
+      // Optional: Auto-create the user if they don't exist
+      // This depends on your use case — you could also return 400 here instead
+      const clerkUser = await fetch(`https://api.clerk.com/v1/users/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${process.env.CLERK_SECRET_KEY}`
+        }
+      }).then(res => res.json())
+
+      user = await prisma.user.create({
+        data: {
+          id: userId,
+          email: clerkUser.email_addresses[0].email_address,
+          name: `${clerkUser.first_name} ${clerkUser.last_name}`,
+          major: "", // You can fill this dynamically if needed
+          academicYear: ""
+        }
+      })
+    }
+
+    const body = await request.json()
+    const { title, type, content, url, fileId, tags, priority } = body
+
+    const material = await prisma.material.create({
+      data: {
         title,
         type,
         content,
@@ -20,37 +46,13 @@ export async function POST(request: Request) {
         fileId,
         tags,
         priority,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        userId,
       },
-    )
+    })
 
     return NextResponse.json(material)
   } catch (error) {
-    return NextResponse.json({ error: "Failed to create material" }, { status: 500 })
+    console.error("[MATERIALS_POST]", error)
+    return new NextResponse("Internal Error", { status: 500 })
   }
 }
-
-export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get("userId")
-    const type = searchParams.get("type")
-
-    const query = [`userId=${userId}`]
-    if (type) {
-      query.push(`type=${type}`)
-    }
-
-    const materials = await databases.listDocuments(
-      process.env.NEXT_PUBLIC_APPWRITE_DATABASE_ID!,
-      process.env.NEXT_PUBLIC_APPWRITE_MATERIALS_COLLECTION_ID!,
-      query,
-    )
-
-    return NextResponse.json(materials)
-  } catch (error) {
-    return NextResponse.json({ error: "Failed to fetch materials" }, { status: 500 })
-  }
-}
-

@@ -1,13 +1,14 @@
+"use client"
+
+import { useUser } from "@clerk/nextjs"
 import { Bell } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
-interface WelcomeBannerProps {
-  userName: string
-  notificationCount?: number
-}
+export function WelcomeBanner() {
+  const { user } = useUser()
+  const notificationCount = 3 // This would come from your notifications system
 
-export function WelcomeBanner({ userName, notificationCount = 0 }: WelcomeBannerProps) {
   const getTimeOfDay = () => {
     const hour = new Date().getHours()
     if (hour < 12) return "morning"
@@ -15,13 +16,15 @@ export function WelcomeBanner({ userName, notificationCount = 0 }: WelcomeBanner
     return "evening"
   }
 
+  if (!user) return null
+
   return (
     <Card className="border-none bg-gradient-to-r from-[#2D3748] to-[#319795]">
       <CardHeader>
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div className="space-y-1">
             <CardTitle className="text-2xl font-bold text-white">
-              Good {getTimeOfDay()}, {userName}! 👋
+              Good {getTimeOfDay()}, {user.firstName}! 👋
             </CardTitle>
             <CardDescription className="text-gray-200">Ready to organize your study materials?</CardDescription>
           </div>

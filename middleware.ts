@@ -1,32 +1,16 @@
-import { NextResponse } from "next/server"
-import type { NextRequest } from "next/server"
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
+import { prisma } from '@/lib/db'
 
-export function middleware(request: NextRequest) {
-  const authCookie = request.cookies.get("a_session_")
-  const isAuthPage = request.nextUrl.pathname.startsWith("/login") || request.nextUrl.pathname.startsWith("/signup")
+// Define the public routes that can be accessed without authentication
+const isPublicRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)', '/onboarding(.*)'])
 
-  if (!authCookie && !isAuthPage) {
-    return NextResponse.redirect(new URL("/login", request.url))
+export default clerkMiddleware(async (auth, request) => {
+  if (!isPublicRoute(request)) {
+    await auth.protect()
   }
-
-  if (authCookie && isAuthPage) {
-    return NextResponse.redirect(new URL("/dashboard", request.url))
-  }
-
-  return NextResponse.next()
-}
+})
 
 export const config = {
-  matcher: [
-    "/dashboard/:path*",
-    "/notes/:path*",
-    "/documents/:path*",
-    "/links/:path*",
-    "/calendar/:path*",
-    "/tags/:path*",
-    "/groups/:path*",
-    "/login",
-    "/signup",
-  ],
+  matcher: ['/((?!.+\\.[\\w]+$|_next).*)', '/', '/(api|trpc)(.*)'],
 }
-

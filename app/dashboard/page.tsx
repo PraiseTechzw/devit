@@ -5,12 +5,20 @@ import { StorageQuota } from "@/components/storage-quota"
 import { TagCloud } from "@/components/tag-cloud"
 import { AddMaterial } from "@/components/add-material"
 import { WelcomeBanner } from "@/components/welcome-banner"
+import { redirect } from "next/navigation"
+import { auth } from "@clerk/nextjs/server"
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const { userId } = await auth()
+
+  if (!userId) {
+    redirect("/sign-in")
+  }
+
   return (
     <div className="container p-4 sm:p-6 mx-auto">
       <div className="grid gap-6">
-        <WelcomeBanner userName="Alex" notificationCount={3} />
+        <WelcomeBanner />
         <div className="grid gap-6">
           <SearchFilters />
           <div className="grid lg:grid-cols-[1fr_300px] gap-6">

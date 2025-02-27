@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from "@/context/auth-context"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 
 export default function LoginPage() {
   const { signIn } = useAuth()
@@ -52,7 +52,7 @@ export default function LoginPage() {
               alt="Login illustration"
               className="relative z-10 w-full"
               height="400"
-              src="/login.png"
+              src="/placeholder.svg"
               width="400"
             />
           </div>

@@ -1,4 +1,5 @@
-import { Bell, Menu, Search } from "lucide-react"
+import { UserButton } from "@clerk/nextjs"
+import { Menu, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -29,23 +30,7 @@ export function Header() {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="w-5 h-5" />
-            <span className="absolute top-0 right-0 h-2 w-2 bg-[#E53E3E] rounded-full" />
-          </Button>
-          <Button variant="ghost" size="icon">
-            <img
-              alt="User avatar"
-              className="rounded-full"
-              height="32"
-              src="/placeholder.svg"
-              style={{
-                aspectRatio: "32/32",
-                objectFit: "cover",
-              }}
-              width="32"
-            />
-          </Button>
+          <UserButton afterSignOutUrl="/" />
         </div>
       </div>
     </header>
