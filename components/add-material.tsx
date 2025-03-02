@@ -186,52 +186,59 @@ export function AddMaterial() {
   }
 
   async function handleSubmit() {
-    if (!user || !validateForm()) return
-    setLoading(true)
-
+    if (!user || !validateForm()) return;
+    setLoading(true);
+  
     try {
-      let fileId
+      let fileId;
       if (materialType === "pdf" && selectedFile) {
         const uploadedFile = await storage.createFile(
           process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!,
           ID.unique(),
           selectedFile,
-        )
-        fileId = uploadedFile.$id
+        );
+        fileId = uploadedFile.$id;
       }
-
+  
+      const payload = {
+        userId: user.id,
+        title: formData.title,
+        type: materialType,
+        content: formData.content,
+        url: formData.url,
+        fileId,
+        tags: formData.tags,
+        priority: formData.priority,
+      };
+  
+      console.log('Payload:', payload); // Log the payload for debugging
+  
       const response = await fetch("/api/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: user.id,
-          title: formData.title,
-          type: materialType,
-          content: formData.content,
-          url: formData.url,
-          fileId,
-          tags: formData.tags,
-          priority: formData.priority,
-        }),
-      })
-
-      if (!response.ok) throw new Error("Failed to create material")
-
+        body: JSON.stringify(payload),
+      });
+  
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create material');
+      }
+  
       toast({
         title: "Success!",
         description: "Your material has been added successfully.",
-      })
-
-      resetForm()
+      });
+  
+      resetForm();
     } catch (error) {
-      console.error("Error creating material:", error)
+      console.error("Error creating material:", error);
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to create material. Please try again.",
-      })
+        description: (error instanceof Error ? error.message : "Failed to create material. Please try again."),
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
