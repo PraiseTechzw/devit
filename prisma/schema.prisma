@@ -27,6 +27,7 @@ model User {
   tags          Tag[]
   sharedFiles   SharedFile[]
   reactions     MessageReaction[]
+  events        Event[]
 
   // Preferences - stored as JSON (optional)
   preferences   Json?
@@ -232,3 +233,22 @@ model Tag {
   @@unique([userId, name])
   @@index([userId])
 }
+
+model Event {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startDate   DateTime
+  endDate     DateTime?
+  type        String    // "deadline" | "exam" | "meeting" | "other"
+  priority    String    // "high" | "medium" | "low"
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([userId])
+  @@index([startDate])
+}
+
