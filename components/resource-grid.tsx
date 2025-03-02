@@ -27,7 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useToast } from "@/hooks/use-toast"
+import { useToast } from "@/components/ui/use-toast"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { MaterialViewer } from "@/components/material-viewer"
 import { storage } from "@/lib/appwrite"
@@ -42,7 +42,7 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [materials] = useState(initialMaterials)
+  const [materials] = useState(initialMaterials || [])
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null)
   const [viewerOpen, setViewerOpen] = useState(false)
 
@@ -60,8 +60,7 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
       const result = await storage.getFileDownload(process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!, material.fileId)
 
       // Create a download link
-      const blob = new Blob([result])
-      const url = URL.createObjectURL(blob)
+      const url = URL.createObjectURL(result)
       const a = document.createElement("a")
       a.href = url
       a.download = material.title
@@ -179,7 +178,7 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
         </Button>
       </div>
 
-      {materials.length === 0 ? (
+      {!materials?.length ? (
         <Card>
           <CardContent className="p-8 text-center">
             <p className="text-muted-foreground">No materials found. Click the "Add Material" button to get started.</p>
