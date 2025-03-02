@@ -1,107 +1,113 @@
-/* eslint-disable react-hooks/exhaustive-deps */
-/* eslint-disable react/no-unescaped-entities */
-
 "use client"
 
-import { useEffect, useState } from "react"
-import { usePathname } from "next/navigation"
-import { useUser } from "@clerk/nextjs"
-import { BookOpen, FileText, Globe, Grid2X2, List, MoreVertical } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import { Grid2X2, List, MoreVertical, Eye, Download, Star, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import type { Material } from "@/types"
+import { Badge } from "@/components/ui/badge"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { useToast } from "@/hooks/use-toast"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { MaterialViewer } from "@/components/material-viewer"
+import { storage } from "@/lib/appwrite"
+import type { Material } from "@prisma/client"
 
-export function ResourceGrid() {
-  const pathname = usePathname()
-  const { user } = useUser()
+interface ResourceGridProps {
+  initialMaterials: Material[]
+}
+
+export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toast } = useToast()
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
-  const [materials, setMaterials] = useState<Material[]>([])
-  const [loading, setLoading] = useState(true)
+  const [materials] = useState(initialMaterials)
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null)
+  const [viewerOpen, setViewerOpen] = useState(false)
 
-  // Determine material type based on current route
-  const getTypeFromPath = () => {
-    switch (pathname) {
-      case "/notes":
-        return "note"
-      case "/documents":
-        return "pdf"
-      case "/links":
-        return "link"
-      default:
-        return undefined // All types for dashboard
-    }
+  const handleView = (material: Material) => {
+    setSelectedMaterial(material)
+    setViewerOpen(true)
   }
 
-  useEffect(() => {
-    if (user) {
-      fetchMaterials()
-    }
-  }, [user, pathname])
-
-  async function fetchMaterials() {
+  const handleDownload = async (material: Material) => {
     try {
-      const type = getTypeFromPath()
-      const url = type ? `/api/materials?type=${type}` : "/api/materials"
-      const response = await fetch(url)
-      if (!response.ok) throw new Error("Failed to fetch materials")
-      const data = await response.json()
-      setMaterials(data)
+      if (!material.fileId) {
+        throw new Error("No file associated with this material")
+      }
+
+      const result = await storage.getFileDownload(process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!, material.fileId)
+
+      // Create a download link
+      const blob = new Blob([result])
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = material.title
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+
+      toast({
+        title: "Success",
+        description: "File downloaded successfully.",
+      })
     } catch (error) {
-      console.error("Error fetching materials:", error)
-    } finally {
-      setLoading(false)
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to download file.",
+      })
     }
   }
 
-  const getIcon = (type: string) => {
-    switch (type) {
-      case "note":
-        return <FileText className="w-4 h-4" />
-      case "pdf":
-        return <BookOpen className="w-4 h-4" />
-      case "link":
-        return <Globe className="w-4 h-4" />
-      default:
-        return null
+  const handleDelete = async (material: Material) => {
+    try {
+      // If it's a file, delete from storage first
+      if (material.fileId) {
+        await storage.deleteFile(process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!, material.fileId)
+      }
+
+      const response = await fetch(`/api/materials/${material.id}`, {
+        method: "DELETE",
+      })
+
+      if (!response.ok) throw new Error("Failed to delete material")
+
+      toast({
+        title: "Success",
+        description: "Material deleted successfully.",
+      })
+
+      router.refresh()
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to delete material.",
+      })
     }
   }
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
-        return "bg-[#E53E3E] text-white"
+        return "bg-destructive text-destructive-foreground"
       case "medium":
-        return "bg-[#319795] text-white"
+        return "bg-primary text-primary-foreground"
       case "low":
-        return "bg-gray-500 text-white"
+        return "bg-muted text-muted-foreground"
       default:
-        return "bg-gray-200"
+        return "bg-secondary text-secondary-foreground"
     }
-  }
-
-  if (loading) {
-    return (
-      <div className={viewMode === "grid" ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-4"}>
-        {[1, 2, 3, 4, 5, 6].map((i) => (
-          <Card key={i} className="group">
-            <CardHeader>
-              <Skeleton className="h-6 w-3/4" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Skeleton className="h-6 w-20" />
-                <Skeleton className="h-6 w-20" />
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Skeleton className="h-6 w-16" />
-            </CardFooter>
-          </Card>
-        ))}
-      </div>
-    )
   }
 
   return (
@@ -111,7 +117,7 @@ export function ResourceGrid() {
           variant="ghost"
           size="icon"
           onClick={() => setViewMode("grid")}
-          className={viewMode === "grid" ? "bg-gray-100" : ""}
+          className={viewMode === "grid" ? "bg-muted" : ""}
         >
           <Grid2X2 className="h-4 w-4" />
         </Button>
@@ -119,7 +125,7 @@ export function ResourceGrid() {
           variant="ghost"
           size="icon"
           onClick={() => setViewMode("list")}
-          className={viewMode === "list" ? "bg-gray-100" : ""}
+          className={viewMode === "list" ? "bg-muted" : ""}
         >
           <List className="h-4 w-4" />
         </Button>
@@ -133,39 +139,89 @@ export function ResourceGrid() {
         </Card>
       ) : (
         <div className={viewMode === "grid" ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-4"}>
-          {materials.map((resource) => (
-            <Card
-              key={resource.id}
-              className={`group ${viewMode === "list" ? "flex flex-col sm:flex-row sm:items-center" : ""}`}
-            >
-              <CardHeader
-                className={`flex flex-row items-start justify-between space-y-0 ${viewMode === "list" ? "flex-1" : ""}`}
-              >
-                <div className="flex items-center space-x-2">
-                  {getIcon(resource.type)}
-                  <span className="font-medium">{resource.title}</span>
+          {materials.map((material) => (
+            <Card key={material.id} className="group">
+              <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                <div className="flex-1 cursor-pointer" onClick={() => handleView(material)}>
+                  <h3 className="font-medium leading-none">{material.title}</h3>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    {material.type === "note"
+                      ? material.content?.slice(0, 100) + "..."
+                      : material.type === "link"
+                        ? material.url
+                        : "PDF Document"}
+                  </p>
                 </div>
-                <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100">
-                  <MoreVertical className="w-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={() => handleView(material)}>
+                      <Eye className="h-4 w-4 mr-2" />
+                      View
+                    </DropdownMenuItem>
+                    {material.type === "pdf" && (
+                      <DropdownMenuItem onClick={() => handleDownload(material)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem>
+                      <Star className="h-4 w-4 mr-2" />
+                      Add to Favorites
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => router.push(`/materials/${material.id}/edit`)}>
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Edit
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      className="text-destructive focus:text-destructive"
+                      onClick={() => handleDelete(material)}
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </CardHeader>
-              <CardContent className={viewMode === "list" ? "hidden sm:block" : ""}>
+              <CardContent>
                 <div className="flex flex-wrap gap-2">
-                  {resource.tags.map((tag) => (
-                    <Badge key={tag} variant="secondary">
+                  {material.tags.map((tag) => (
+                    <Badge
+                      key={tag}
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-secondary/80"
+                      onClick={() => {
+                        const params = new URLSearchParams(searchParams.toString())
+                        params.set("tag", tag)
+                        router.push(`/dashboard?${params.toString()}`)
+                      }}
+                    >
                       {tag}
                     </Badge>
                   ))}
                 </div>
               </CardContent>
-              <CardFooter className={`flex justify-between ${viewMode === "list" ? "sm:w-48" : ""}`}>
-                <Badge className={getPriorityColor(resource.priority)}>{resource.priority}</Badge>
-                <span className="text-sm text-gray-500">{new Date(resource.createdAt).toLocaleDateString()}</span>
+              <CardFooter className="flex justify-between">
+                <Badge className={getPriorityColor(material.priority)}>{material.priority}</Badge>
+                <span className="text-sm text-muted-foreground">
+                  {new Date(material.createdAt).toLocaleDateString()}
+                </span>
               </CardFooter>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
+        <DialogContent className="max-w-4xl w-full h-[80vh]">
+          {selectedMaterial && <MaterialViewer material={selectedMaterial} />}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

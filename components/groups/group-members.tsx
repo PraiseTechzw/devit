@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { MoreHorizontal, Crown, Shield } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EmptyState } from "@/components/empty-states"
 
 interface GroupMembersProps {
   members: any[] // Type this properly based on your Prisma schema
@@ -88,52 +89,68 @@ export function GroupMembers({ members, groupId, isOwner }: GroupMembersProps) {
       </CardHeader>
       <CardContent>
         <ScrollArea className="h-[500px] pr-4">
-          <div className="space-y-4">
-            {members.map((member) => (
-              <div key={member.id} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Avatar>
-                    <AvatarImage src={`https://avatar.vercel.sh/${member.user.name}`} />
-                    <AvatarFallback>{member.user.name[0]}</AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <p className="font-medium">{member.user.name}</p>
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      {member.role === "owner" ? (
-                        <>
-                          <Crown className="w-3 h-3" /> Owner
-                        </>
-                      ) : member.role === "admin" ? (
-                        <>
-                          <Shield className="w-3 h-3" /> Admin
-                        </>
-                      ) : (
-                        "Member"
-                      )}
-                    </p>
+          {members.length <= 1 ? (
+            <EmptyState
+              type="members"
+              isOwner={isOwner}
+              onAction={() => {
+                // Implement invite functionality
+                toast({
+                  title: "Coming Soon!",
+                  description: "Member invitations will be available soon.",
+                })
+              }}
+            />
+          ) : (
+            <div className="space-y-4">
+              {members.map((member) => (
+                <div key={member.id} className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar>
+                      <AvatarImage src={`https://avatar.vercel.sh/${member.user.name}`} />
+                      <AvatarFallback>{member.user.name[0]}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="font-medium">{member.user.name}</p>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        {member.role === "owner" ? (
+                          <>
+                            <Crown className="w-3 h-3" /> Owner
+                          </>
+                        ) : member.role === "admin" ? (
+                          <>
+                            <Shield className="w-3 h-3" /> Admin
+                          </>
+                        ) : (
+                          "Member"
+                        )}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                {isOwner && member.role !== "owner" && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" disabled={loading}>
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {member.role !== "admin" && (
-                        <DropdownMenuItem onClick={() => promoteToAdmin(member.id)}>Promote to Admin</DropdownMenuItem>
-                      )}
-                      <DropdownMenuItem className="text-destructive" onClick={() => removeMember(member.id)}>
-                        Remove from Group
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                )}
-              </div>
-            ))}
-          </div>
+                  {isOwner && member.role !== "owner" && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" disabled={loading}>
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {member.role !== "admin" && (
+                          <DropdownMenuItem onClick={() => promoteToAdmin(member.id)}>
+                            Promote to Admin
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem className="text-destructive" onClick={() => removeMember(member.id)}>
+                          Remove from Group
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </ScrollArea>
       </CardContent>
     </Card>

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { storage } from "@/lib/appwrite"
 import { FileUpload } from "./file-upload"
+import { storage } from "@/lib/appwrite"
+import { EmptyState } from "@/components/empty-states"
 
 interface SharedFile {
   id: string
@@ -57,10 +58,10 @@ export function SharedFiles({ groupId, isOwner }: SharedFilesProps) {
 
   async function downloadFile(fileId: string, fileName: string) {
     try {
-      const result = await storage.getFileDownload(process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!, fileId)
+      const response = await fetch(await storage.getFileDownload(process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!, fileId))
+      const blob = await response.blob()
 
       // Create a download link
-      const blob = new Blob([result])
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -128,41 +129,44 @@ export function SharedFiles({ groupId, isOwner }: SharedFilesProps) {
           />
 
           <ScrollArea className="h-[300px]">
-            <div className="space-y-2">
-              {files.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-3">
-                    {getFileIcon(file.fileType)}
-                    <div>
-                      <p className="text-sm font-medium">{file.fileName}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Shared by {file.user.name} • {new Date(file.createdAt).toLocaleDateString()}
-                      </p>
+            {files.length === 0 && !loading ? (
+              <EmptyState type="files" isOwner={isOwner} onAction={() => {}} />
+            ) : (
+              <div className="space-y-2">
+                {files.map((file) => (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-2 border rounded-lg hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-3">
+                      {getFileIcon(file.fileType)}
+                      <div>
+                        <p className="text-sm font-medium">{file.fileName}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Shared by {file.user.name} • {new Date(file.createdAt).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="icon" onClick={() => downloadFile(file.fileId, file.fileName)}>
+                        <Download className="w-4 h-4" />
+                      </Button>
+                      {isOwner && (
+                        <Button variant="ghost" size="icon" onClick={() => deleteFile(file.id, file.fileId)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon" onClick={() => downloadFile(file.fileId, file.fileName)}>
-                      <Download className="w-4 h-4" />
-                    </Button>
-                    {isOwner && (
-                      <Button variant="ghost" size="icon" onClick={() => deleteFile(file.id, file.fileId)}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {files.length === 0 && !loading && (
-                <p className="text-sm text-muted-foreground text-center py-4">No files shared yet</p>
-              )}
-            </div>
+                ))}
+                {files.length === 0 && !loading && (
+                  <p className="text-sm text-muted-foreground text-center py-4">No files shared yet</p>
+                )}
+              </div>
+            )}
           </ScrollArea>
         </div>
       </CardContent>
     </Card>
   )
 }
-

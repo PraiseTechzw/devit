@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { MessageSquare, Plus, Users, FileText } from "lucide-react"
+import { MessageSquare, Plus, Users, FileText, Lock, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -44,6 +44,12 @@ export function GroupList({ initialGroups, userId }: GroupListProps) {
   const router = useRouter()
   const [groups, setGroups] = useState(initialGroups)
   const [dialogOpen, setDialogOpen] = useState(false)
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+
+  const handleGroupClick = (groupId: string) => {
+    setSelectedGroupId(groupId)
+    router.push(`/groups/${groupId}`)
+  }
 
   return (
     <div className="space-y-4">
@@ -75,15 +81,27 @@ export function GroupList({ initialGroups, userId }: GroupListProps) {
         {groups.map((group) => (
           <Card
             key={group.id}
-            className="group cursor-pointer hover:shadow-md transition-shadow"
-            onClick={() => router.push(`/groups/${group.id}`)}
+            className={`group cursor-pointer transition-all duration-200 hover:shadow-md ${
+              selectedGroupId === group.id ? "ring-2 ring-[#319795]" : ""
+            }`}
+            onClick={() => handleGroupClick(group.id)}
           >
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div className="space-y-1">
                   <CardTitle className="flex items-center gap-2">
                     {group.name}
-                    {group.isPrivate && <Badge variant="secondary">Private</Badge>}
+                    {group.isPrivate ? (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Private
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary" className="flex items-center gap-1">
+                        <Globe className="w-3 h-3" />
+                        Public
+                      </Badge>
+                    )}
                   </CardTitle>
                   <CardDescription>Created by {group.owner.name}</CardDescription>
                 </div>
