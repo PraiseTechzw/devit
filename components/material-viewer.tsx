@@ -2,12 +2,13 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { Download, Pencil } from "lucide-react"
+import { Download, Pencil, Link } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { storage } from "@/lib/appwrite"
-import { useToast } from "@/components/use-toast"
+import { useToast } from "@/hooks/use-toast"
+import { FileViewer } from "@/components/file-viewer"
 import type { Material } from "@prisma/client"
 
 interface MaterialViewerProps {
@@ -40,11 +41,10 @@ export function MaterialViewer({ material }: MaterialViewerProps) {
         throw new Error("No file associated with this material")
       }
 
-      const fileUrl = await storage.getFileDownload(process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!, material.fileId)
-      const response = await fetch(fileUrl)
-      const blob = await response.blob()
+      const result = await storage.getFileDownload(process.env.NEXT_PUBLIC_APPWRITE_STORAGE_ID!, material.fileId)
 
       // Create a download link
+      const blob = new Blob([result])
       const url = URL.createObjectURL(blob)
       const a = document.createElement("a")
       a.href = url
@@ -87,33 +87,40 @@ export function MaterialViewer({ material }: MaterialViewerProps) {
               <Download className="h-4 w-4" />
             </Button>
           )}
+          {material.type === "link" && (
+            <Button variant="outline" size="icon" asChild>
+              <a href={material.url} target="_blank" rel="noopener noreferrer">
+                <Link className="h-4 w-4" />
+              </a>
+            </Button>
+          )}
           <Button variant="outline" size="icon" onClick={() => router.push(`/materials/${material.id}/edit`)}>
             <Pencil className="h-4 w-4" />
           </Button>
         </div>
       </div>
 
-      <ScrollArea className="flex-1 border rounded-lg p-4" onMouseUp={handleTextSelection}>
+      <div className="flex-1 border rounded-lg overflow-hidden">
         {material.type === "note" ? (
-          <div className="prose max-w-none">
-            {material.content?.split("\n").map((paragraph, index) => (
-              <p key={index} className="mb-4">
-                {paragraph}
-              </p>
-            ))}
-          </div>
+          <ScrollArea className="h-full p-4" onMouseUp={handleTextSelection}>
+            <div className="prose max-w-none">
+              {material.content?.split("\n").map((paragraph, index) => (
+                <p key={index} className="mb-4">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          </ScrollArea>
         ) : material.type === "link" ? (
-          material.url ? (
-            <iframe src={material.url} className="w-full h-full" />
-          ) : (
-            <p className="text-muted-foreground">No URL provided.</p>
-          )
+          <iframe src={material.url} className="w-full h-full" />
+        ) : material.fileId ? (
+          <FileViewer fileId={material.fileId} fileName={material.title} fileType={material.type} />
         ) : (
           <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">PDF viewer coming soon!</p>
+            <p className="text-muted-foreground">No content available</p>
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {selectedText && (
         <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 bg-popover border rounded-lg shadow-lg p-4">

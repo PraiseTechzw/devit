@@ -2,7 +2,21 @@
 
 import { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { Grid2X2, List, MoreVertical, Eye, Download, Star, Pencil, Trash2 } from "lucide-react"
+import {
+  Grid2X2,
+  List,
+  MoreVertical,
+  Eye,
+  Download,
+  Star,
+  Pencil,
+  Trash2,
+  FileText,
+  Code,
+  LinkIcon,
+  File,
+} from "lucide-react"
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -97,6 +111,25 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
     }
   }
 
+  const getTypeIcon = (type: string, fileType?: string) => {
+    switch (type) {
+      case "note":
+        return <FileText className="h-5 w-5" />
+      case "pdf":
+        return <File className="h-5 w-5" />
+      case "link":
+        return <LinkIcon className="h-5 w-5" />
+      default:
+        if (fileType?.includes("word")) {
+          return <FileText className="h-5 w-5" />
+        }
+        if (fileType?.match(/\.(js|ts|py|java|cpp|cs|html|css|json)$/)) {
+          return <Code className="h-5 w-5" />
+        }
+        return <File className="h-5 w-5" />
+    }
+  }
+
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "high":
@@ -108,6 +141,21 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
       default:
         return "bg-secondary text-secondary-foreground"
     }
+  }
+
+  const container = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1,
+      },
+    },
+  }
+
+  const item = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0 },
   }
 
   return (
@@ -138,83 +186,97 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className={viewMode === "grid" ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-4"}>
+        <motion.div
+          variants={container}
+          initial="hidden"
+          animate="show"
+          className={viewMode === "grid" ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-4"}
+        >
           {materials.map((material) => (
-            <Card key={material.id} className="group">
-              <CardHeader className="flex flex-row items-start justify-between space-y-0">
-                <div className="flex-1 cursor-pointer" onClick={() => handleView(material)}>
-                  <h3 className="font-medium leading-none">{material.title}</h3>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {material.type === "note"
-                      ? material.content?.slice(0, 100) + "..."
-                      : material.type === "link"
-                        ? material.url
-                        : "PDF Document"}
-                  </p>
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => handleView(material)}>
-                      <Eye className="h-4 w-4 mr-2" />
-                      View
-                    </DropdownMenuItem>
-                    {material.type === "pdf" && (
-                      <DropdownMenuItem onClick={() => handleDownload(material)}>
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
+            <motion.div key={material.id} variants={item}>
+              <Card className="group hover:shadow-md transition-shadow duration-200">
+                <CardHeader className="flex flex-row items-start justify-between space-y-0">
+                  <div className="flex-1 cursor-pointer space-y-2" onClick={() => handleView(material)}>
+                    <div className="flex items-center gap-2">
+                      {getTypeIcon(material.type)}
+                      <h3 className="font-medium leading-none line-clamp-1">{material.title}</h3>
+                    </div>
+                    <p className="text-sm text-muted-foreground line-clamp-2">
+                      {material.type === "note"
+                        ? material.content
+                        : material.type === "link"
+                          ? material.url
+                          : `${material.type.toUpperCase()} Document`}
+                    </p>
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleView(material)}>
+                        <Eye className="h-4 w-4 mr-2" />
+                        View
                       </DropdownMenuItem>
-                    )}
-                    <DropdownMenuItem>
-                      <Star className="h-4 w-4 mr-2" />
-                      Add to Favorites
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => router.push(`/materials/${material.id}/edit`)}>
-                      <Pencil className="h-4 w-4 mr-2" />
-                      Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      className="text-destructive focus:text-destructive"
-                      onClick={() => handleDelete(material)}
-                    >
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {material.tags.map((tag) => (
-                    <Badge
-                      key={tag}
-                      variant="secondary"
-                      className="cursor-pointer hover:bg-secondary/80"
-                      onClick={() => {
-                        const params = new URLSearchParams(searchParams.toString())
-                        params.set("tag", tag)
-                        router.push(`/dashboard?${params.toString()}`)
-                      }}
-                    >
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
-              </CardContent>
-              <CardFooter className="flex justify-between">
-                <Badge className={getPriorityColor(material.priority)}>{material.priority}</Badge>
-                <span className="text-sm text-muted-foreground">
-                  {new Date(material.createdAt).toLocaleDateString()}
-                </span>
-              </CardFooter>
-            </Card>
+                      {material.fileId && (
+                        <DropdownMenuItem onClick={() => handleDownload(material)}>
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </DropdownMenuItem>
+                      )}
+                      <DropdownMenuItem>
+                        <Star className="h-4 w-4 mr-2" />
+                        Add to Favorites
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => router.push(`/materials/${material.id}/edit`)}>
+                        <Pencil className="h-4 w-4 mr-2" />
+                        Edit
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        className="text-destructive focus:text-destructive"
+                        onClick={() => handleDelete(material)}
+                      >
+                        <Trash2 className="h-4 w-4 mr-2" />
+                        Delete
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {material.tags.map((tag) => (
+                      <Badge
+                        key={tag}
+                        variant="secondary"
+                        className="cursor-pointer hover:bg-secondary/80 transition-colors"
+                        onClick={() => {
+                          const params = new URLSearchParams(searchParams.toString())
+                          params.set("tag", tag)
+                          router.push(`/dashboard?${params.toString()}`)
+                        }}
+                      >
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-between">
+                  <Badge className={getPriorityColor(material.priority)}>{material.priority}</Badge>
+                  <span className="text-sm text-muted-foreground">
+                    {new Date(material.createdAt).toLocaleDateString()}
+                  </span>
+                </CardFooter>
+              </Card>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       )}
 
       <Dialog open={viewerOpen} onOpenChange={setViewerOpen}>
