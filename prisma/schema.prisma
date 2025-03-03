@@ -44,6 +44,7 @@ model Material {
   priority  String   // 'high' | 'medium' | 'low'
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  fileSize Int?
 
   // Foreign key to User (owner)
   userId    String
@@ -242,6 +243,9 @@ model Event {
   endDate     DateTime?
   type        String    // "deadline" | "exam" | "meeting" | "other"
   priority    String    // "high" | "medium" | "low"
+  location    String?
+  isOnline    Boolean   @default(false)
+  meetingUrl  String?
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

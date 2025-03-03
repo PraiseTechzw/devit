@@ -35,9 +35,10 @@ import type { Material } from "@prisma/client"
 
 interface ResourceGridProps {
   initialMaterials: Material[]
+  type?: "note" | "pdf" | "link" // Optional type filter
 }
 
-export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
+export function ResourceGrid({ initialMaterials, type }: ResourceGridProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
@@ -45,6 +46,8 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
   const [materials] = useState(initialMaterials || [])
   const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null)
   const [viewerOpen, setViewerOpen] = useState(false)
+
+  const filteredMaterials = type ? initialMaterials.filter((material) => material.type === type) : initialMaterials
 
   const handleView = (material: Material) => {
     setSelectedMaterial(material)
@@ -157,6 +160,13 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
     show: { opacity: 1, y: 0 },
   }
 
+  const getEmptyMessage = () => {
+    if (type === "note") return 'No notes found. Click the "Add Material" button to create your first note.'
+    if (type === "pdf") return 'No documents found. Click the "Add Material" button to upload your first document.'
+    if (type === "link") return 'No links found. Click the "Add Material" button to save your first link.'
+    return 'No materials found. Click the "Add Material" button to get started.'
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-end space-x-2">
@@ -178,10 +188,10 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
         </Button>
       </div>
 
-      {!materials?.length ? (
+      {!filteredMaterials?.length ? (
         <Card>
           <CardContent className="p-8 text-center">
-            <p className="text-muted-foreground">No materials found. Click the "Add Material" button to get started.</p>
+            <p className="text-muted-foreground">{getEmptyMessage()}</p>
           </CardContent>
         </Card>
       ) : (
@@ -191,7 +201,7 @@ export function ResourceGrid({ initialMaterials }: ResourceGridProps) {
           animate="show"
           className={viewMode === "grid" ? "grid sm:grid-cols-2 lg:grid-cols-3 gap-4" : "flex flex-col gap-4"}
         >
-          {materials.map((material) => (
+          {filteredMaterials.map((material) => (
             <motion.div key={material.id} variants={item}>
               <Card className="group hover:shadow-md transition-shadow duration-200">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0">

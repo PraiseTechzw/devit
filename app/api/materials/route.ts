@@ -1,17 +1,19 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { auth } from "@clerk/nextjs/server";
+import { z } from "zod"; // For schema validation
 
-// Type for the request body (used in POST)
-interface MaterialRequestBody {
-  title: string;
-  type: "note" | "pdf" | "link";
-  content?: string;
-  url?: string;
-  fileId?: string;
-  tags?: string[] | string;
-  priority: string;
-}
+// Schema for validating the request body
+const MaterialSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  type: z.enum(["note", "pdf", "link"]),
+  content: z.string().optional(),
+  url: z.string().url().optional(),
+  fileId: z.string().optional(),
+  fileSize: z.number().int().nonnegative().optional(), // Add fileSize validation
+  tags: z.union([z.string(), z.array(z.string())]).optional(),
+  priority: z.enum(["high", "medium", "low"]),
+});
 
 // Helper function to fetch user details from Clerk
 async function getClerkUser(userId: string) {
@@ -37,6 +39,16 @@ async function getClerkUser(userId: string) {
   }
 }
 
+// Helper function to handle errors
+function handleError(error: unknown, context: string) {
+  console.error(`[${context}]`, error);
+  const errorMessage = (error instanceof Error) ? error.message : "Unknown error";
+  return new NextResponse(
+    JSON.stringify({ error: "Internal Server Error", details: errorMessage }),
+    { status: 500 }
+  );
+}
+
 // GET handler to fetch materials
 async function handleGet(request: Request) {
   try {
@@ -57,16 +69,24 @@ async function handleGet(request: Request) {
       orderBy: {
         createdAt: "desc", // Sort by most recent
       },
+      select: {
+        id: true,
+        title: true,
+        type: true,
+        content: true,
+        url: true,
+        fileId: true,
+        fileSize: true, // Include fileSize in the response
+        tags: true,
+        priority: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     return NextResponse.json(materials);
   } catch (error) {
-    console.error("[MATERIALS_GET]", error);
-    const errorMessage = (error instanceof Error) ? error.message : "Unknown error";
-    return new NextResponse(
-      JSON.stringify({ error: "Internal Server Error", details: errorMessage }),
-      { status: 500 }
-    );
+    return handleError(error, "MATERIALS_GET");
   }
 }
 
@@ -98,41 +118,28 @@ async function handlePost(request: Request) {
       });
     }
 
-    const body: MaterialRequestBody = await request.json();
-    console.log("Request Body:", body);
+    // Parse and validate the request body
+    const body = await request.json();
+    const validation = MaterialSchema.safeParse(body);
 
-    const { title, type, content, url, fileId, tags, priority } = body;
-
-    // Validate required fields
-    if (!title || !type || !priority) {
-      return new NextResponse("Missing required fields", { status: 400 });
+    if (!validation.success) {
+      return new NextResponse(
+        JSON.stringify({ error: "Validation Error", details: validation.error.errors }),
+        { status: 400 }
+      );
     }
 
-    // Validate priority
-    const allowedPriorities = ["high", "medium", "low"];
-    if (!allowedPriorities.includes(priority)) {
-      return new NextResponse("Invalid priority value", { status: 400 });
-    }
+    const { title, type, content, url, fileId, fileSize, tags, priority } = validation.data;
 
     // Validate type-specific fields
-    switch (type) {
-      case "note":
-        if (!content) {
-          return new NextResponse("Content is required for notes", { status: 400 });
-        }
-        break;
-      case "pdf":
-        if (!fileId) {
-          return new NextResponse("File is required for PDF documents", { status: 400 });
-        }
-        break;
-      case "link":
-        if (!url) {
-          return new NextResponse("URL is required for web links", { status: 400 });
-        }
-        break;
-      default:
-        return new NextResponse("Invalid material type", { status: 400 });
+    if (type === "note" && !content) {
+      return new NextResponse("Content is required for notes", { status: 400 });
+    }
+    if (type === "pdf" && !fileId) {
+      return new NextResponse("File is required for PDF documents", { status: 400 });
+    }
+    if (type === "link" && !url) {
+      return new NextResponse("URL is required for web links", { status: 400 });
     }
 
     // Ensure tags is always an array
@@ -169,6 +176,7 @@ async function handlePost(request: Request) {
         content,
         url,
         fileId,
+        fileSize, // Include fileSize
         tags: tagsArray,
         priority,
         userId,
@@ -177,12 +185,7 @@ async function handlePost(request: Request) {
 
     return NextResponse.json(material);
   } catch (error) {
-    console.error("[MATERIALS_POST] Error Details:", error);
-    const errorMessage = (error instanceof Error) ? error.message : "Unknown error";
-    return new NextResponse(
-      JSON.stringify({ error: "Internal Server Error", details: errorMessage }),
-      { status: 500 }
-    );
+    return handleError(error, "MATERIALS_POST");
   }
 }
 
